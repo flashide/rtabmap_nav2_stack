@@ -11,6 +11,55 @@
 do_build_all.sh  #直接编译就行
 ```
 
+## 0.1 最小启动命令
+
+先加载环境：
+
+```bash
+cd ~/rtabmap_nav2_stack
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+```
+
+建图：
+
+```bash
+ros2 launch robot_bringup fastlio_mapping.launch.py
+```
+
+定位：
+
+```bash
+ros2 launch robot_bringup bringup.launch.py mode:=localization
+```
+
+定位（指定数据库）：
+
+```bash
+ros2 launch robot_bringup bringup.launch.py mode:=localization database_path:=/data/maps/site_a/rtabmap.db
+```
+
+导航：
+
+```bash
+ros2 launch robot_bringup bringup.launch.py mode:=navigation
+```
+
+导航（指定数据库）：
+
+```bash
+ros2 launch robot_bringup bringup.launch.py mode:=navigation database_path:=/data/maps/site_a/rtabmap.db
+```
+
+说明：
+
+- `fastlio_mapping.launch.py` 是当前建图主入口
+- `bringup.launch.py` 是总入口，`mode:=localization` 用已有数据库做重定位，`mode:=navigation` 继续拉起 Nav2
+- `mode:=navigation` 已经内含定位，不需要先单独启动一次 `mode:=localization`
+- `rtabmap.db` 默认路径是 `/data/maps/site_a/rtabmap.db`
+- 可以通过 `database_path:=/你的路径/rtabmap.db` 显式传入数据库路径
+- 定位和导航前，需要已有可用的 `rtabmap.db`
+
 ## 1. 仓库结构
 
 ```text
@@ -25,6 +74,7 @@ rtabmap_nav2_stack/                 # 工作空间
 │   │       └── nav2_common.yaml    # Navigation 2 配置
 │   ├── FAST_LIO_ROS2/              # FAST-LIO 激光惯性紧耦合里程计（提供 odom 和去畸变点云）
 │   ├── livox_ros_driver2/          # Livox MID360 雷达驱动
+│   ├── navigation2/                # Nav2 导航栈源码，提供路径规划、轨迹控制与恢复行为
 │   └── rtabmap_ros/                # 官方 RTAB-Map ROS 2 包装层
 │       ├── rtabmap_launch/         # （done）通用 Launch 入口，  目前的脚本走的就是这个
 │       ├── rtabmap_slam/           # （done）SLAM 核心节点，负责建图、回环检测、图优化与重定位

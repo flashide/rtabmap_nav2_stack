@@ -123,11 +123,34 @@ if ! grep -Eq 'PACKAGE_VERSION[[:space:]]+"0\.23\.4"' "$RTABMAP_CONFIG_VERSION_F
 fi
 echo "[INFO] Using RTABMap_DIR: $RTABMap_DIR"
 
+HAVE_LOCAL_NAV2=0
+TOTAL_STAGES=5
+if [[ -f "$ROOT_DIR/src/navigation2/navigation2/package.xml" ]]; then
+  HAVE_LOCAL_NAV2=1
+  TOTAL_STAGES=6
+fi
+
 OVERRIDES=(
   rtabmap_conversions rtabmap_costmap_plugins rtabmap_demos rtabmap_examples
   rtabmap_launch rtabmap_msgs rtabmap_odom rtabmap_python rtabmap_ros
   rtabmap_rviz_plugins rtabmap_slam rtabmap_sync rtabmap_util rtabmap_viz
 )
+
+if [[ "$HAVE_LOCAL_NAV2" == "1" ]]; then
+  OVERRIDES+=(
+    costmap_queue dwb_core dwb_critics dwb_msgs dwb_plugins
+    nav_2d_msgs nav_2d_utils
+    nav2_amcl nav2_behavior_tree nav2_behaviors nav2_bringup nav2_bt_navigator
+    nav2_collision_monitor nav2_common nav2_constrained_smoother nav2_controller
+    nav2_core nav2_costmap_2d nav2_dwb_controller nav2_graceful_controller
+    nav2_lifecycle_manager nav2_map_server nav2_mppi_controller nav2_msgs
+    nav2_navfn_planner nav2_planner nav2_regulated_pure_pursuit_controller
+    nav2_rotation_shim_controller nav2_route nav2_rviz_plugins
+    nav2_simple_commander nav2_smac_planner nav2_smoother
+    nav2_theta_star_planner nav2_util nav2_velocity_smoother
+    nav2_voxel_grid nav2_waypoint_follower navigation2
+  )
+fi
 
 DRIVER_PACKAGES=(
   livox_ros_driver2 fast_lio
@@ -149,6 +172,25 @@ APP_PACKAGES=(
   rtsp_camera_bridge robot_bringup
 )
 
+NAV2_PACKAGES=()
+if [[ "$HAVE_LOCAL_NAV2" == "1" ]]; then
+  # Keep runtime Nav2 packages in the full build.
+  # Intentionally skip nav2_system_tests to avoid pulling test-only dependencies
+  # such as Gazebo / launch_testing into the normal workspace build.
+  NAV2_PACKAGES=(
+    nav2_common nav2_msgs nav2_util nav2_core nav2_costmap_2d nav2_voxel_grid
+    nav_2d_msgs nav_2d_utils dwb_msgs costmap_queue dwb_core dwb_critics dwb_plugins
+    nav2_amcl nav2_behavior_tree nav2_behaviors nav2_bt_navigator
+    nav2_collision_monitor nav2_constrained_smoother nav2_controller
+    nav2_dwb_controller nav2_graceful_controller nav2_lifecycle_manager
+    nav2_map_server nav2_mppi_controller nav2_navfn_planner nav2_planner
+    nav2_regulated_pure_pursuit_controller nav2_rotation_shim_controller
+    nav2_route nav2_rviz_plugins nav2_simple_commander nav2_smac_planner
+    nav2_smoother nav2_theta_star_planner nav2_velocity_smoother
+    nav2_waypoint_follower nav2_bringup navigation2
+  )
+fi
+
 CMAKE_ARGS=(
   -DCMAKE_BUILD_TYPE="$BUILD_TYPE"
   -DOpenCV_DIR="$OpenCV_DIR"
@@ -160,7 +202,7 @@ COMMON_ARGS=(
   --allow-overriding "${OVERRIDES[@]}"
 )
 
-echo "[STEP] Build stage 1/5: drivers and odometry (parallel)"
+echo "[STEP] Build stage 1/$TOTAL_STAGES: drivers and odometry (parallel)"
 export MAKEFLAGS="-j${JOBS} -l${JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
 colcon build \
@@ -170,7 +212,7 @@ colcon build \
   --cmake-args "${CMAKE_ARGS[@]}" \
   --packages-select "${DRIVER_PACKAGES[@]}"
 
-echo "[STEP] Build stage 2/5: RTABMap base packages (parallel)"
+echo "[STEP] Build stage 2/$TOTAL_STAGES: RTABMap base packages (parallel)"
 export MAKEFLAGS="-j${JOBS} -l${JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
 colcon build \
@@ -180,7 +222,7 @@ colcon build \
   --cmake-args "${CMAKE_ARGS[@]}" \
   --packages-select "${BASE_PACKAGES[@]}"
 
-echo "[STEP] Build stage 3/5: RTABMap heavy packages (low parallel)"
+echo "[STEP] Build stage 3/$TOTAL_STAGES: RTABMap heavy packages (low parallel)"
 export MAKEFLAGS="-j${HEAVY_JOBS} -l${HEAVY_JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$HEAVY_JOBS"
 colcon build \
@@ -190,7 +232,7 @@ colcon build \
   --cmake-args "${CMAKE_ARGS[@]}" \
   --packages-select "${HEAVY_PACKAGES[@]}"
 
-echo "[STEP] Build stage 4/5: RTABMap remaining packages (parallel)"
+echo "[STEP] Build stage 4/$TOTAL_STAGES: RTABMap remaining packages (parallel)"
 export MAKEFLAGS="-j${JOBS} -l${JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
 colcon build \
@@ -200,7 +242,22 @@ colcon build \
   --cmake-args "${CMAKE_ARGS[@]}" \
   --packages-select "${REST_PACKAGES[@]}"
 
-echo "[STEP] Build stage 5/5: application packages (parallel)"
+if [[ "$HAVE_LOCAL_NAV2" == "1" ]]; then
+  echo "[STEP] Build stage 5/$TOTAL_STAGES: Navigation2 packages (parallel)"
+  export MAKEFLAGS="-j${JOBS} -l${JOBS}"
+  export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
+  colcon build \
+    --executor parallel \
+    --parallel-workers "$WORKERS" \
+    "${COMMON_ARGS[@]}" \
+    --cmake-args "${CMAKE_ARGS[@]}" \
+    --packages-select "${NAV2_PACKAGES[@]}"
+
+  echo "[STEP] Build stage 6/$TOTAL_STAGES: application packages (parallel)"
+else
+  echo "[INFO] Local Navigation2 source not found at src/navigation2, skipping Nav2 source build."
+  echo "[STEP] Build stage 5/$TOTAL_STAGES: application packages (parallel)"
+fi
 export MAKEFLAGS="-j${JOBS} -l${JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
 colcon build \
