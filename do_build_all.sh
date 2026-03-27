@@ -93,7 +93,7 @@ echo "[INFO] OpenCV_DIR   : $OpenCV_DIR"
 if [[ "$INSTALL_DEPS" == "1" ]]; then
   echo "[STEP] Installing dependencies with rosdep"
   rosdep update
-  rosdep install --from-paths src --ignore-src -r -y
+  rosdep install --from-paths src third_party/rtabmap-0.23.4 --ignore-src -r -y
 fi
 
 if [[ "$CLEAN_BUILD" == "1" ]]; then
@@ -129,6 +129,10 @@ OVERRIDES=(
   rtabmap_rviz_plugins rtabmap_slam rtabmap_sync rtabmap_util rtabmap_viz
 )
 
+DRIVER_PACKAGES=(
+  livox_ros_driver2 fast_lio
+)
+
 BASE_PACKAGES=(
   rtabmap rtabmap_msgs rtabmap_costmap_plugins rtabmap_python rtabmap_conversions
 )
@@ -139,6 +143,10 @@ HEAVY_PACKAGES=(
 
 REST_PACKAGES=(
   rtabmap_util rtabmap_odom rtabmap_slam rtabmap_launch rtabmap_examples rtabmap_demos rtabmap_ros
+)
+
+APP_PACKAGES=(
+  rtsp_camera_bridge robot_bringup
 )
 
 CMAKE_ARGS=(
@@ -152,7 +160,17 @@ COMMON_ARGS=(
   --allow-overriding "${OVERRIDES[@]}"
 )
 
-echo "[STEP] Build stage 1/3: base packages (parallel)"
+echo "[STEP] Build stage 1/5: drivers and odometry (parallel)"
+export MAKEFLAGS="-j${JOBS} -l${JOBS}"
+export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
+colcon build \
+  --executor parallel \
+  --parallel-workers "$WORKERS" \
+  "${COMMON_ARGS[@]}" \
+  --cmake-args "${CMAKE_ARGS[@]}" \
+  --packages-select "${DRIVER_PACKAGES[@]}"
+
+echo "[STEP] Build stage 2/5: RTABMap base packages (parallel)"
 export MAKEFLAGS="-j${JOBS} -l${JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
 colcon build \
@@ -162,7 +180,7 @@ colcon build \
   --cmake-args "${CMAKE_ARGS[@]}" \
   --packages-select "${BASE_PACKAGES[@]}"
 
-echo "[STEP] Build stage 2/3: heavy packages (low parallel)"
+echo "[STEP] Build stage 3/5: RTABMap heavy packages (low parallel)"
 export MAKEFLAGS="-j${HEAVY_JOBS} -l${HEAVY_JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$HEAVY_JOBS"
 colcon build \
@@ -172,7 +190,7 @@ colcon build \
   --cmake-args "${CMAKE_ARGS[@]}" \
   --packages-select "${HEAVY_PACKAGES[@]}"
 
-echo "[STEP] Build stage 3/3: remaining packages (parallel)"
+echo "[STEP] Build stage 4/5: RTABMap remaining packages (parallel)"
 export MAKEFLAGS="-j${JOBS} -l${JOBS}"
 export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
 colcon build \
@@ -181,6 +199,16 @@ colcon build \
   "${COMMON_ARGS[@]}" \
   --cmake-args "${CMAKE_ARGS[@]}" \
   --packages-select "${REST_PACKAGES[@]}"
+
+echo "[STEP] Build stage 5/5: application packages (parallel)"
+export MAKEFLAGS="-j${JOBS} -l${JOBS}"
+export CMAKE_BUILD_PARALLEL_LEVEL="$JOBS"
+colcon build \
+  --executor parallel \
+  --parallel-workers "$WORKERS" \
+  "${COMMON_ARGS[@]}" \
+  --cmake-args "${CMAKE_ARGS[@]}" \
+  --packages-select "${APP_PACKAGES[@]}"
 
 echo "[DONE] Build finished."
 echo "[NEXT] source \"$ROOT_DIR/install/setup.bash\""

@@ -2,6 +2,14 @@
 
 ## 前置条件
 
+
+```bash
+# 编译（首次或代码更新后）
+cd ~/ROS2/rtabmap_nav2_stack
+colcon build --packages-up-to livox_ros_driver2 fast_lio robot_bringup --symlink-install
+source install/setup.bash
+```
+
 ```bash
 # 编译（首次或代码更新后）
 cd ~/ROS2/rtabmap_nav2_stack
