@@ -49,6 +49,8 @@ ros2 launch robot_bringup bringup.launch.py mode:=navigation
 
 ```bash
 ros2 launch robot_bringup bringup.launch.py mode:=navigation database_path:=/data/maps/site_a/rtabmap.db
+
+ros2 launch robot_bringup bringup.launch.py mode:=navigation database_path:=/home/wheeltec/.ros/rtabmap.db enable_rviz:=true
 ```
 
 说明：

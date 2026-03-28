@@ -79,7 +79,11 @@ def generate_launch_description() -> LaunchDescription:
             'stereo': PythonExpression(["'", LaunchConfiguration('sensor_profile'), "' == 'lidar_stereo'"]),
             'depth': PythonExpression(["'", LaunchConfiguration('sensor_profile'), "' == 'lidar_rgbd'"]),
             'subscribe_rgb': PythonExpression(["'", LaunchConfiguration('sensor_profile'), "' == 'lidar_rgbd' or '", LaunchConfiguration('sensor_profile'), "' == 'lidar_mono'"]),
-            'args': PythonExpression(["'-d' if '", LaunchConfiguration('delete_db_on_start'), "' == 'true' else ''"]),
+            'args': PythonExpression([
+                "('-d ' if '", LaunchConfiguration('delete_db_on_start'), "' == 'true' else '') + "
+                "'--Grid/Sensor 0 --Grid/RayTracing true --Grid/3D false --Grid/RangeMin 0.5 "
+                "--Grid/NormalsSegmentation false --Grid/MaxGroundHeight 0.05 --Grid/MaxObstacleHeight 1.0'"
+            ]),
         }.items(),
     )
 
