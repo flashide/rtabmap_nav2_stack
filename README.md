@@ -56,9 +56,60 @@ ros2 launch robot_bringup bringup.launch.py mode:=navigation database_path:=/dat
 - `fastlio_mapping.launch.py` 是当前建图主入口
 - `bringup.launch.py` 是总入口，`mode:=localization` 用已有数据库做重定位，`mode:=navigation` 继续拉起 Nav2
 - `mode:=navigation` 已经内含定位，不需要先单独启动一次 `mode:=localization`
+- RTAB-Map 的 2D 地图统一发布到全局 `/map`
 - `rtabmap.db` 默认路径是 `/data/maps/site_a/rtabmap.db`
 - 可以通过 `database_path:=/你的路径/rtabmap.db` 显式传入数据库路径
 - 定位和导航前，需要已有可用的 `rtabmap.db`
+
+## 0.2 导出 PCD
+
+默认建图数据库位于：
+
+```bash
+~/.ros/rtabmap.db
+```
+
+导出 PCD：
+
+```bash
+cd ~/rtabmap_nav2_stack
+python3 scripts/extract_pcd_from_db.py ~/.ros/rtabmap.db
+```
+
+指定数据库路径导出：
+
+```bash
+python3 scripts/extract_pcd_from_db.py /data/maps/site_a/rtabmap.db
+```
+
+指定数据库和输出目录：
+
+```bash
+python3 scripts/extract_pcd_from_db.py /data/maps/site_a/rtabmap.db /data/maps/site_a/export
+```
+
+说明：
+
+- 脚本会同时导出 `PCD` 和 `PLY`
+- 默认输出目录为仓库下的 `cloud_map/`
+- 建议在建图结束、`rtabmap.db` 写完后再执行导出
+
+## 0.3 导出导航用 2D 栅格图
+
+导出当前 `/map` 为 `pgm + yaml`：
+
+```bash
+cd ~/rtabmap_nav2_stack
+source /opt/ros/humble/setup.bash
+source install/setup.bash
+ros2 run nav2_map_server map_saver_cli -t /map -f /data/maps/site_a/nav2_map
+```
+
+说明：
+
+- 输出文件为 `/data/maps/site_a/nav2_map.pgm` 和 `/data/maps/site_a/nav2_map.yaml`
+- 该命令保存的是当前正在发布的 `/map` 话题，所以需要 RTAB-Map 已经在运行并发布地图
+- 建议在定位或导航链路稳定后执行，得到给 Nav2 使用的 2D 占据栅格图
 
 ## 1. 仓库结构
 

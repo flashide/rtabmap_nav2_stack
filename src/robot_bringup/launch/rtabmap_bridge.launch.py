@@ -53,6 +53,7 @@ def generate_launch_description() -> LaunchDescription:
             'database_path': LaunchConfiguration('database_path'),
             'frame_id': LaunchConfiguration('frame_id'),
             'map_frame_id': LaunchConfiguration('map_frame_id'),
+            'map_topic': '/map',
             'publish_tf_map': 'true',
             'odom_topic': LaunchConfiguration('odom_topic'),
             'publish_tf_odom': 'false',

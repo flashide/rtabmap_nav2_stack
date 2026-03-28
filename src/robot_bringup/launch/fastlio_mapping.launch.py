@@ -107,6 +107,7 @@ def generate_launch_description() -> LaunchDescription:
             'localization': 'false',
             'frame_id': LaunchConfiguration('frame_id'),
             'odom_frame_id': LaunchConfiguration('odom_frame_id'),
+            'map_topic': '/map',
             'publish_tf_map': 'true',
             'publish_tf_odom': 'false',
             'odom_topic': '/Odometry',   # <--- Link to FAST-LIO's odometry topic
