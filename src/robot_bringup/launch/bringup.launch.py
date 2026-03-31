@@ -31,6 +31,7 @@ def generate_launch_description() -> LaunchDescription:
     start_livox = LaunchConfiguration('start_livox')
     enable_gps = LaunchConfiguration('enable_gps')
     enable_rviz = LaunchConfiguration('enable_rviz')
+    enable_camera_lidar_fusion = LaunchConfiguration('enable_camera_lidar_fusion')
     publish_base_link_tf = LaunchConfiguration('publish_base_link_tf')
     database_path = LaunchConfiguration('database_path')
     nav2_params_file = LaunchConfiguration('nav2_params_file')
@@ -49,6 +50,7 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument('start_livox', default_value='true', description='Start Livox MID360 launch'),
         DeclareLaunchArgument('enable_gps', default_value='false', description='Enable navsat_transform and pass GPS fix to RTAB-Map'),
         DeclareLaunchArgument('enable_rviz', default_value='false', description='Launch RViz through the RTAB-Map bridge'),
+        DeclareLaunchArgument('enable_camera_lidar_fusion', default_value='false', description='Start ROI-based camera-lidar fusion node'),
         DeclareLaunchArgument('publish_base_link_tf', default_value='true', description='Publish a zero static TF from base_footprint to base_link if URDF is not ready'),
         DeclareLaunchArgument('database_path', default_value='/data/maps/site_a/rtabmap.db'),
         DeclareLaunchArgument('nav2_params_file', default_value=PathJoinSubstitution([robot_bringup_share, 'config', 'nav2_common.yaml'])),
@@ -58,6 +60,8 @@ def generate_launch_description() -> LaunchDescription:
         DeclareLaunchArgument('imu_topic', default_value='/livox/imu'),
         DeclareLaunchArgument('gps_fix_topic', default_value='/sensors/gps/fix'),
         DeclareLaunchArgument('scan_cloud_topic', default_value='/cloud_registered_body'),
+        DeclareLaunchArgument('camera_info_topic', default_value='/sensors/camera/rgb/camera_info'),
+        DeclareLaunchArgument('detections_topic', default_value='/detections'),
     ]
 
     # ── 1. Livox MID360 driver ──
@@ -140,6 +144,19 @@ def generate_launch_description() -> LaunchDescription:
         }.items(),
     )
 
+    camera_lidar_fusion = Node(
+        package='camera_lidar_roi_fusion',
+        executable='camera_lidar_roi_fusion.py',
+        name='camera_lidar_roi_fusion',
+        output='screen',
+        condition=IfCondition(enable_camera_lidar_fusion),
+        parameters=[{
+            'pointcloud_topic': LaunchConfiguration('scan_cloud_topic'),
+            'camera_info_topic': LaunchConfiguration('camera_info_topic'),
+            'detections_topic': LaunchConfiguration('detections_topic'),
+        }],
+    )
+
     # ── 6. Nav2 ──
     nav2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(PathJoinSubstitution([nav2_bringup_share, 'launch', 'navigation_launch.py'])),
@@ -219,6 +236,7 @@ def generate_launch_description() -> LaunchDescription:
     ld.add_action(fast_lio_launch)
     ld.add_action(navsat_transform)
     ld.add_action(rtabmap_bridge)
+    ld.add_action(camera_lidar_fusion)
     ld.add_action(nav2_launch)
     ld.add_action(collision_monitor)
     return ld
